@@ -2159,8 +2159,11 @@
       '  </div>',
       '  <p style="white-space:pre-wrap; margin:0;">' + explanationText + '</p>',
       '</div>',
-      '<div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center;">',
-      '  <button class="btn-flare-zoom" style="padding:8px 16px; font-size:11px;" onclick="closeEventModal(); zoomToFlareEvent(\'' + ev.class + '\', \'AR ' + (ev.ar || '13664') + '\');"><i class="fa-solid fa-crosshairs mr-1"></i> ZOOM 3D SUN TO THIS EVENT</button>',
+      '<div style="margin-top:16px; display:flex; gap:10px; justify-content:space-between; align-items:center; flex-wrap:wrap;">',
+      '  <div style="display:flex; gap:8px;">',
+      '    <button class="btn-flare-zoom" style="padding:8px 14px; font-size:11px;" onclick="closeEventModal(); zoomToFlareEvent(\'' + ev.class + '\', \'AR ' + (ev.ar || '13664') + '\');"><i class="fa-solid fa-crosshairs mr-1"></i> ZOOM 3D SUN</button>',
+      '    <button class="btn-primary-glow" style="padding:8px 14px; font-size:11px; background:rgba(168,85,247,0.2); border-color:#a855f7; color:#d8b4fe;" onclick="closeEventModal(); openAgent37Modal(\'Perform deep forensic analysis on flare event ' + ev.id + ' (' + ev.class + ') target ' + (ev.ar || 'AR 13664') + '\');"><i class="fa-solid fa-brain mr-1"></i> DEEP AUDIT IN AGENT 37</button>',
+      '  </div>',
       '  <button class="btn-secondary-ghost" onclick="closeEventModal()">CLOSE DOSSIER</button>',
       '</div>'
     ].join('');
@@ -2661,6 +2664,131 @@
         window.zoomToFlare(lastInjectedFlare.flare_class, lastInjectedFlare.active_region);
       }
     }, 400);
+  };
+
+  /* ══════════════════════════════════════════════════════════
+     15. AGENT 37 AI RESEARCH COPILOT & CHAT ENGINE
+     ══════════════════════════════════════════════════════════ */
+  window.openAgent37Modal = function (initialPrompt) {
+    var modal = document.getElementById('agent37Modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      var timeEl = document.getElementById('agentWelcomeTime');
+      if (timeEl) timeEl.textContent = new Date().toUTCString().slice(17, 25) + ' UTC';
+      var inp = document.getElementById('agentUserInput');
+      if (inp) {
+        if (initialPrompt) inp.value = initialPrompt;
+        setTimeout(function () { inp.focus(); }, 150);
+      }
+    }
+  };
+
+  window.closeAgent37Modal = function () {
+    var modal = document.getElementById('agent37Modal');
+    if (modal) modal.style.display = 'none';
+  };
+
+  var agentModalEl = document.getElementById('agent37Modal');
+  if (agentModalEl) {
+    agentModalEl.addEventListener('click', function (e) {
+      if (e.target === agentModalEl) window.closeAgent37Modal();
+    });
+  }
+
+  window.askAgent37 = function (promptText) {
+    var inp = document.getElementById('agentUserInput');
+    if (inp) inp.value = promptText;
+    window.sendAgent37Query();
+  };
+
+  window.sendAgent37Query = function () {
+    var inp = document.getElementById('agentUserInput');
+    var stream = document.getElementById('agentChatStream');
+    var btn = document.getElementById('btnSendAgentQuery');
+    if (!inp || !stream) return;
+
+    var query = inp.value.trim();
+    if (!query) return;
+
+    // Render User message
+    var userBubble = document.createElement('div');
+    userBubble.className = 'agent-msg-bubble agent-msg-user';
+    userBubble.innerHTML = '<b style="color: #67e8f9; font-size: 11px; font-family: var(--font-mono);"><i class="fa-solid fa-user-astronaut mr-1"></i> YOU:</b><p style="margin: 4px 0 0 0;">' + 
+      query.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>';
+    stream.appendChild(userBubble);
+    inp.value = '';
+
+    // Render Loading indicator
+    var botLoading = document.createElement('div');
+    botLoading.className = 'agent-msg-bubble agent-msg-bot';
+    botLoading.id = 'agentTempLoading';
+    botLoading.innerHTML = '<i class="fa-solid fa-brain fa-spin text-purple-400 mr-2"></i> Reasoning over Aditya-L1 empirical telemetry...';
+    stream.appendChild(botLoading);
+    stream.scrollTop = stream.scrollHeight;
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> THINKING...';
+    }
+
+    apiFetch('/api/v1/agent/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query })
+    })
+    .then(function (res) {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> INQUIRE';
+      }
+      var temp = document.getElementById('agentTempLoading');
+      if (temp) temp.remove();
+
+      var botBubble = document.createElement('div');
+      botBubble.className = 'agent-msg-bubble agent-msg-bot';
+
+      var formattedMd = typeof marked === 'function' ? marked.parse(res.response_markdown) : res.response_markdown
+        .replace(/### (.*?)\n/g, '<h3 style="color:#d8b4fe; margin:6px 0;">$1</h3>')
+        .replace(/#### (.*?)\n/g, '<h4 style="color:#c084fc; margin:4px 0;">$1</h4>')
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08); padding:1px 5px; border-radius:4px; font-family:var(--font-mono); font-size:11.5px;">$1</code>')
+        .replace(/\n\n/g, '<br><br>');
+
+      var citationsHtml = '';
+      if (Array.isArray(res.citations) && res.citations.length > 0) {
+        citationsHtml = '<div class="agent-citations-bar">' + 
+          res.citations.map(function(c) { return '<span><i class="fa-solid fa-bookmark mr-1"></i> ' + c + '</span>'; }).join('') + 
+          '<span style="margin-left: auto; color: var(--mint);"><i class="fa-solid fa-shield-halved mr-1"></i> ' + ((res.confidence_score || 0.985) * 100).toFixed(1) + '% Confidence</span>' +
+          '</div>';
+      }
+
+      botBubble.innerHTML = [
+        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">',
+        '  <b style="color: #c084fc; font-family: var(--font-mono); font-size: 11px;"><i class="fa-solid fa-brain mr-1"></i> ' + (res.model || 'Agent 37 Neural Engine') + '</b>',
+        '  <span style="font-size: 10px; color: var(--ink-muted);">' + (res.timestamp_utc || '') + '</span>',
+        '</div>',
+        '<div>' + formattedMd + '</div>',
+        citationsHtml
+      ].join('');
+
+      stream.appendChild(botBubble);
+      stream.scrollTop = stream.scrollHeight;
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> INQUIRE';
+      }
+      var temp = document.getElementById('agentTempLoading');
+      if (temp) temp.remove();
+
+      var errBubble = document.createElement('div');
+      errBubble.className = 'agent-msg-bubble agent-msg-bot';
+      errBubble.innerHTML = '<b style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Query Notice:</b> Unable to reach Agent37 backend. Please verify that FastAPI is active on port 8000.';
+      stream.appendChild(errBubble);
+      stream.scrollTop = stream.scrollHeight;
+    });
   };
 
   // Initial fetch of PRADAN training status

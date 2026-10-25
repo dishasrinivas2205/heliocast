@@ -413,6 +413,17 @@ def explain_flare_event(req: ExplainRequest):
     return asdict(explanation)
 
 
+class AgentChatRequest(BaseModel):
+    query: str
+    context: Optional[Dict[str, Any]] = None
+
+
+@router.post("/agent/chat")
+def chat_with_agent37(req: AgentChatRequest):
+    """Interactive question answering and operational inquiry with Agent37."""
+    return agent_adapter.chat(query=req.query, context=req.context)
+
+
 # ══════════════════════════════════════════════════════════════════
 # DATABASE MANAGEMENT & METROLOGY ENDPOINTS
 # ══════════════════════════════════════════════════════════════════

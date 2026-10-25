@@ -82,6 +82,9 @@
     </nav>
 
     <div class="hud-status-strip">
+      <button class="agent37-hud-btn" id="btnOpenAgent37Modal" onclick="openAgent37Modal()" title="Agent37 AI Astrophysics Forensics & Research Console">
+        <i class="fa-solid fa-brain text-purple-400 mr-1"></i> AGENT 37
+      </button>
       <button class="injector-btn" id="btnOpenInjectorModal" onclick="openFlareInjectorModal()" title="Demo Solar Flare Injector & PRADAN AI Predictor">
         <i class="fa-solid fa-fire-flame-curved text-orange-400 mr-1"></i> FLARE INJECTOR (DEMO)
       </button>
@@ -786,6 +789,81 @@
     </div>
   </div>
 
-  <script src="script.js?v=backend_connected_v5"></script>
+  <!-- ══════════════ AGENT37 AI ASTROPHYSICS RESEARCH & COPILOT MODAL ══════════════ -->
+  <div class="modal-backdrop" id="agent37Modal" style="display: none;">
+    <div class="agent-modal-card" onclick="event.stopPropagation()">
+      <div class="agent-modal-header">
+        <div style="display: flex; align-items: center;">
+          <i class="fa-solid fa-brain text-purple-400" style="font-size: 18px; margin-right: 10px;"></i>
+          <div>
+            <h3 style="margin: 0; font-size: 14px; font-weight: 700; color: #fff; font-family: var(--font-mono); letter-spacing: 0.05em;">
+              AGENT 37 // ASTROPHYSICS FORENSIC RESEARCH COPILOT
+            </h3>
+            <span style="font-size: 11px; color: var(--ink-muted);">ISRO Aditya-L1 Space Weather Intelligence &bull; Empirical Dual-Band Grounding</span>
+          </div>
+          <span class="agent-badge-live"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> ACTIVE (v3.4)</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeAgent37Modal()" title="Close">&times;</button>
+      </div>
+
+      <!-- Quick Knowledge & Prompt Chips -->
+      <div class="agent-quick-chips">
+        <button class="agent-chip" onclick="askAgent37('Explain Neupert verification on X-class flares')">
+          <i class="fa-solid fa-atom text-cyan-400 mr-1"></i> Neupert Effect
+        </button>
+        <button class="agent-chip" onclick="askAgent37('What are the energy passbands and detector technologies of SoLEXS and HEL1OS?')">
+          <i class="fa-solid fa-satellite text-amber-400 mr-1"></i> SoLEXS vs HEL1OS
+        </button>
+        <button class="agent-chip" onclick="askAgent37('Assess Active Region AR 13664 magnetic complexity and flare probability')">
+          <i class="fa-solid fa-sun text-orange-400 mr-1"></i> AR 13664 Eruption Risk
+        </button>
+        <button class="agent-chip" onclick="askAgent37('How does HelioCast calculate precursor early-warning lead time?')">
+          <i class="fa-solid fa-stopwatch text-emerald-400 mr-1"></i> Lead-Time Calculation
+        </button>
+        <button class="agent-chip" onclick="askAgent37('What is the ISRO Spacecraft Safe-Hold procedure for X-class flares?')">
+          <i class="fa-solid fa-shield-halved text-purple-400 mr-1"></i> ISRO Safe-Hold Directives
+        </button>
+      </div>
+
+      <!-- Live Chat Stream -->
+      <div class="agent-chat-stream" id="agentChatStream">
+        <!-- Initial Welcome Bubble -->
+        <div class="agent-msg-bubble agent-msg-bot">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <b style="color: #c084fc; font-family: var(--font-mono); font-size: 11px;">
+              <i class="fa-solid fa-satellite-dish mr-1"></i> AGENT 37 ASTROPHYSICS ENGINE
+            </b>
+            <span style="font-size: 10px; color: var(--ink-muted);" id="agentWelcomeTime">06:45:00 UTC</span>
+          </div>
+          <p style="margin: 0; line-height: 1.6;">
+            Greetings, Flight Director. I am <b>Agent 37</b>, your autonomous astrophysics forensic copilot for <b>ISRO's Aditya-L1 mission</b>.
+            I continuously analyze dual-band telemetry from <b>SoLEXS (1–22 keV)</b> and <b>HEL1OS (10–150 keV)</b>, verify the <b>Neupert effect</b>,
+            audit magnetic complexity of active solar regions, and dispatch operational space weather directives.
+          </p>
+          <div class="agent-citations-bar">
+            <span><i class="fa-solid fa-database mr-1"></i> ISSDC PRADAN Archive</span>
+            <span><i class="fa-solid fa-check mr-1"></i> CSTLB Validated</span>
+            <span><i class="fa-solid fa-shield mr-1"></i> Zero-Hallucination Guardrails Active</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Input Form -->
+      <div class="agent-input-container">
+        <input
+          type="text"
+          class="agent-input-field"
+          id="agentUserInput"
+          placeholder="Ask Agent 37 about solar physics, Neupert verification, AR 13664, or spacecraft safe-mode directives..."
+          onkeydown="if(event.key==='Enter') sendAgent37Query()"
+        />
+        <button class="agent-send-btn" id="btnSendAgentQuery" onclick="sendAgent37Query()">
+          <i class="fa-solid fa-paper-plane mr-2"></i> INQUIRE
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js?v=backend_connected_v6"></script>
 </body>
 </html>
