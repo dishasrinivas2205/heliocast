@@ -1,0 +1,50 @@
+{
+  "83d92478db44504107047d12e3e665f0286d155bcc371fa37d3ae07ada6adf08": {
+    "file_name": "aditya_l1_master_flare_catalog.csv",
+    "file_path": "/Users/disha/Desktop/HellioCast/data/catalog/aditya_l1_master_flare_catalog.csv",
+    "sha256_checksum": "83d92478db44504107047d12e3e665f0286d155bcc371fa37d3ae07ada6adf08",
+    "size_bytes": 1434,
+    "instrument": "UNKNOWN",
+    "product_level": "LEVEL1",
+    "format_type": "CSV",
+    "observation_start": null,
+    "observation_end": null,
+    "frame_count": 6,
+    "cadence_sec": 10.0,
+    "is_valid": true,
+    "validation_status": "VALIDATED",
+    "ingestion_timestamp": "2026-10-24T13:07:06.650505+00:00"
+  },
+  "d01987d5f0db409359390041e3a9dc28c0d1b30208c9536b32f4e78282873573": {
+    "file_name": "aditya_solexs_level1_sample.fits",
+    "file_path": "/Users/disha/Desktop/HellioCast/data/sample/aditya_solexs_level1_sample.fits",
+    "sha256_checksum": "d01987d5f0db409359390041e3a9dc28c0d1b30208c9536b32f4e78282873573",
+    "size_bytes": 28800,
+    "instrument": "SOLEXS",
+    "product_level": "LEVEL1",
+    "format_type": "FITS",
+    "observation_start": "2024-05-14 08:00:00+00:00",
+    "observation_end": null,
+    "frame_count": 1440,
+    "cadence_sec": 10.0,
+    "is_valid": true,
+    "validation_status": "VALIDATED",
+    "ingestion_timestamp": "2026-10-24T13:07:06.653772+00:00"
+  },
+  "37d9150845df198e35de0b822da36df8c266740bdf696e15807c89a20d279b52": {
+    "file_name": "aditya_hel1os_level1_sample.fits",
+    "file_path": "/Users/disha/Desktop/HellioCast/data/sample/aditya_hel1os_level1_sample.fits",
+    "sha256_checksum": "37d9150845df198e35de0b822da36df8c266740bdf696e15807c89a20d279b52",
+    "size_bytes": 28800,
+    "instrument": "HEL1OS",
+    "product_level": "LEVEL1",
+    "format_type": "FITS",
+    "observation_start": "2024-05-14 08:00:00+00:00",
+    "observation_end": null,
+    "frame_count": 1440,
+    "cadence_sec": 10.0,
+    "is_valid": true,
+    "validation_status": "VALIDATED",
+    "ingestion_timestamp": "2026-10-24T13:07:06.662344+00:00"
+  }
+}

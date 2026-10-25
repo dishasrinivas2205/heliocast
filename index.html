@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>HELIOCAST-L1 — 3D Solar Flare Intelligence</title>
+  <meta name="description" content="HelioCast-L1: Cinematic 3D Solar Flare Nowcasting & Precursor Forecasting Suite using SoLEXS and HEL1OS observations on ISRO Aditya-L1." />
+  <meta name="theme-color" content="#07090B" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" />
+
+  <!-- External Libraries: Three.js, GSAP, KaTeX, Font Awesome -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="is-loading">
+
+  <!-- ══════════════ 3D IMMERSIVE BACKGROUND CANVAS ══════════════ -->
+  <canvas id="bg-scene-3d"></canvas>
+  <canvas class="bg-stars" id="stars"></canvas>
+  <div class="bg-vignette"></div>
+
+  <!-- ══════════════ 3D TARGETING RETICLE OVERLAY ══════════════ -->
+  <div class="flare-targeting-reticle" id="flareReticle" style="display: none;">
+    <div class="reticle-box">
+      <div class="reticle-corner tl"></div>
+      <div class="reticle-corner tr"></div>
+      <div class="reticle-corner bl"></div>
+      <div class="reticle-corner br"></div>
+      <div class="reticle-crosshair"></div>
+      <div class="reticle-ring"></div>
+      <div class="reticle-info">
+        <span class="ri-tag"><i class="fa-solid fa-radiation mr-1"></i> SOLAR FLARE ERUPTION DETECTED</span>
+        <span class="ri-title" id="reticleTitle">ACTIVE REGION 13664</span>
+        <span class="ri-metrics" id="reticleMetrics">COORDS: 24.2°N 18.5°W &bull; ZOOM: 3.5X OPTICAL</span>
+      </div>
+      <button class="reticle-reset-btn" onclick="resetSunZoom()" title="Reset Zoom">
+        <i class="fa-solid fa-xmark mr-1"></i> RESET VIEW
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════ PRELOADER ══════════════ -->
+  <div class="preloader" id="preloader">
+    <div class="pre-inner">
+      <div class="pre-solar-ring"></div>
+      <div class="pre-num"><span id="preCount">0</span><i>%</i></div>
+      <p class="pre-label">HELIOCAST-L1 <span>/</span> 3D COCKPIT INITIALIZING</p>
+      <p class="pre-sub" id="preStatus">CALIBRATING 3D SOLAR STAGE &amp; TELEMETRY</p>
+    </div>
+  </div>
+
+  <!-- ══════════════ FIXED COCKPIT HUD HEADER ══════════════ -->
+  <header class="hud-cockpit">
+    <div class="hud-brand">
+      <a class="hud-mark" href="#view-hero">
+        <div class="solar-icon-spin"></div>
+        <span class="hud-mark-txt">HELIOCAST-L1<em>/</em>3D SOLAR INTELLIGENCE</span>
+      </a>
+      <span class="badge-l1-tag"><i class="fa-solid fa-satellite mr-1"></i> ADITYA-L1 (1.496M KM)</span>
+    </div>
+
+    <!-- Center Module Selector Dock -->
+    <nav class="hud-dock" aria-label="Module Dock">
+      <button class="dock-btn is-active" data-nav="view-hero"><i class="fa-solid fa-sun"></i> Core</button>
+      <button class="dock-btn" data-nav="view-observatory"><i class="fa-solid fa-chart-line"></i> Observatory</button>
+      <button class="dock-btn" data-nav="view-nowcast"><i class="fa-solid fa-radar"></i> Nowcast</button>
+      <button class="dock-btn" data-nav="view-forecast"><i class="fa-solid fa-bolt"></i> Forecast</button>
+      <button class="dock-btn" data-nav="view-fusion"><i class="fa-solid fa-code-compare"></i> Fusion</button>
+      <button class="dock-btn" data-nav="view-archive"><i class="fa-solid fa-database"></i> Archive</button>
+    </nav>
+
+    <div class="hud-status-strip">
+      <button class="api-key-btn" id="btnOpenApiKeyModal" onclick="openApiKeyModal()" title="Configure API & Cloud Keys">
+        <i class="fa-solid fa-key text-amber-400 mr-1"></i> API KEYS
+      </button>
+      <div class="live-pill"><i class="dot-green"></i> <span id="apiStatusText">LIVE API ONLINE</span></div>
+      <div class="hud-clock" id="hudClock">--:--:-- UTC</div>
+    </div>
+  </header>
+
+  <!-- ══════════════ MAIN COCKPIT VIEWPORT (COMPACT & 3D LAYERED) ══════════════ -->
+  <main class="cockpit-container">
+
+    <!-- ──────────────────────────────────────────────────────────
+         VIEW 01 — 3D CINEMATIC MISSION STAGE & LIVE TELEMETRY
+         ────────────────────────────────────────────────────────── -->
+    <section class="cockpit-view" id="view-hero">
+      <div class="hero-3d-layout">
+        <!-- Left Side: Editorial Typography & Telemetry -->
+        <div class="hero-left-panel">
+          <div class="hero-badge-row">
+            <span class="micro-badge"><i class="fa-solid fa-shield-halved text-amber-400"></i> ISRO BHIK 2026 &bull; PS-15</span>
+            <span class="micro-badge"><i class="fa-solid fa-atom text-cyan-400"></i> NEUPERT r = 0.966</span>
+          </div>
+
+          <h1 class="hero-headline">READ THE SUN<br /><em class="glow-serif">BEFORE THE SIGNAL.</em></h1>
+
+          <p class="hero-desc">
+            Autonomous multi-band space weather intelligence uniting <strong>SoLEXS (1–22 keV Soft X-rays)</strong> and <strong>HEL1OS (10–150 keV Hard X-rays)</strong> on Aditya-L1 for real-time nowcasting and precursor flare forecasting with quantifiable <strong>15–45 min lead time</strong>.
+          </p>
+
+          <!-- Quick Action Buttons -->
+          <div class="hero-cta-group">
+            <button class="btn-primary-glow" onclick="scrollToView('view-observatory')">
+              <i class="fa-solid fa-satellite-dish mr-1"></i> OPEN 3D OBSERVATORY
+            </button>
+            <button class="btn-secondary-ghost" onclick="scrollToView('view-forecast')">
+              <i class="fa-solid fa-bolt mr-1"></i> VIEW PREDICTION STREAM
+            </button>
+            <button class="btn-secondary-ghost" onclick="togglePassbandDrawer()">
+              <i class="fa-solid fa-layer-group mr-1"></i> 3D PASSBANDS
+            </button>
+          </div>
+
+          <!-- Quick Live Telemetry Strip -->
+          <div class="telemetry-compact-grid">
+            <div class="telemetry-chip">
+              <span class="chip-lbl">SoLEXS THERMAL FLUX</span>
+              <span class="chip-val" id="quickSxrVal" style="color: #00f0ff;">1.84 &times; 10⁻⁵ <small>W m⁻²</small></span>
+              <span class="chip-sub">SDD Thermal (1–22 keV)</span>
+            </div>
+            <div class="telemetry-chip">
+              <span class="chip-lbl">HEL1OS COUNT RATE</span>
+              <span class="chip-val" id="quickHxrVal" style="color: #ff8a3d;">420.8 <small>cts/s</small></span>
+              <span class="chip-sub">CZT Non-Thermal (10–150 keV)</span>
+            </div>
+            <div class="telemetry-chip">
+              <span class="chip-lbl">EMPIRICAL LEAD TIME</span>
+              <span class="chip-val" style="color: var(--mint);">28.4 <small>min</small></span>
+              <span class="chip-sub">Precursor Acceleration</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side: 3D Solar Stage Viewport Overlay Controls -->
+        <div class="hero-stage-overlay">
+          <div class="stage-3d-card" id="stageCard">
+            <div class="stage-header">
+              <span><i class="fa-solid fa-globe text-amber-400"></i> ADITYA-L1 TARGET REGION: AR 13664</span>
+              <span class="stage-fps" id="stageFps">60 FPS &bull; GLSL TURBULENCE</span>
+            </div>
+
+            <!-- 3D Display Mode Switcher (Type 1: Global Sun / Type 2: 3D Eruptive Arcade) -->
+            <div class="stage-display-type-row">
+              <span class="sdt-label"><i class="fa-solid fa-cube text-amber-400"></i> 3D MODE:</span>
+              <div class="sdt-pills">
+                <button class="sdt-pill active" id="btnType1Orbital" onclick="set3DDisplayType('ORBITAL')">
+                  <i class="fa-solid fa-globe"></i> TYPE 1: GLOBAL SUN
+                </button>
+                <button class="sdt-pill" id="btnType2Prominence" onclick="set3DDisplayType('PROMINENCE')">
+                  <i class="fa-solid fa-fire-flame-curved text-amber-400"></i> TYPE 2: 3D ERUPTIVE ARCADE
+                </button>
+              </div>
+            </div>
+
+            <!-- Passband Pill Selector on 3D Stage -->
+            <div class="stage-passband-row">
+              <button class="pb-pill active" onclick="set3DPassband('COMPOSITE', this)">Composite</button>
+              <button class="pb-pill" onclick="set3DPassband('SOFT_XRAY', this)">SoLEXS (1-22 keV)</button>
+              <button class="pb-pill" onclick="set3DPassband('HARD_XRAY', this)">HEL1OS (10-150 keV)</button>
+              <button class="pb-pill" onclick="set3DPassband('MAGNETOGRAM', this)">Magnetogram</button>
+            </div>
+
+            <!-- 3D Flare Zoom Controls -->
+            <div class="stage-zoom-controls">
+              <button class="btn-flare-zoom" id="btnZoomFlare" onclick="toggleFlareZoom()">
+                <i class="fa-solid fa-crosshairs mr-1"></i> <span id="btnZoomTxt">ZOOM TO AR 13664 FLARE</span>
+              </button>
+              <button class="btn-reset-zoom" id="btnResetZoom" onclick="resetSunZoom()" title="Reset 3D Zoom">
+                <i class="fa-solid fa-arrows-rotate"></i>
+              </button>
+            </div>
+
+            <div class="flare-hud-banner" id="flareHudBanner" style="display: none;">
+              <div class="fhb-left">
+                <span class="pulsing-beacon"></span>
+                <div>
+                  <div class="fhb-title" id="fhbTitle">TARGET LOCK: AR 13664</div>
+                  <div class="fhb-sub" id="fhbSub">SOLAR FLARE ERUPTION &bull; 3.5X OPTICAL ZOOM</div>
+                </div>
+              </div>
+              <span class="class-badge class-x" id="fhbClassBadge">X1.1</span>
+            </div>
+
+            <div class="stage-drag-hint">
+              <i class="fa-solid fa-arrows-up-down-left-right"></i> DRAG TO ROTATE 3D SUN IN REAL TIME
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────────
+         VIEW 02 — 3D LIVE OBSERVATORY & LIGHT CURVE CONSOLE
+         ────────────────────────────────────────────────────────── -->
+    <section class="cockpit-view" id="view-observatory">
+      <div class="view-header-row">
+        <div>
+          <span class="view-eyebrow">OBSERVATORY CONSOLE // SYNCHRONIZED DUAL-BAND</span>
+          <h2 class="view-title">LIVE DUAL-BAND OBSERVATORY</h2>
+        </div>
+        <!-- Time Window & Simulation Scrubber -->
+        <div class="stream-controls-group">
+          <button class="ctrl-btn-small" id="playBtn" onclick="togglePlayback()">
+            <i class="fa-solid fa-play mr-1"></i> <span id="playLabel">PLAY SIM</span>
+          </button>
+          <button class="ctrl-btn-small" onclick="stepForward()"><i class="fa-solid fa-forward-step mr-1"></i> +10s</button>
+          <button class="ctrl-btn-small" onclick="resetSim()"><i class="fa-solid fa-rotate-left mr-1"></i> RESET</button>
+          <div class="stream-time-badge" id="simTimeReadout">T+00:00:00 UTC</div>
+        </div>
+      </div>
+
+      <div class="observatory-split-grid">
+        <!-- Interactive Canvas Light Curve Card -->
+        <div class="chart-glass-card" id="chartCard">
+          <div class="chart-card-topbar">
+            <div class="chart-legend-row">
+              <label><input type="checkbox" id="chkSolexs" checked onchange="renderLightCurves()" /> <span style="color:#00f0ff;">&mdash; SoLEXS (1–22 keV)</span></label>
+              <label><input type="checkbox" id="chkHelios" checked onchange="renderLightCurves()" /> <span style="color:#ff8a3d;">&mdash; HEL1OS (10–150 keV)</span></label>
+              <label><input type="checkbox" id="chkNeupert" checked onchange="renderLightCurves()" /> <span style="color:var(--mint);">&middot;&middot;&middot; Neupert dF/dt</span></label>
+            </div>
+            <div class="chart-meta-badge" id="chartCoverageBadge">
+              <i class="fa-solid fa-circle-check text-green-400"></i> CADENCE: 10s &bull; QUALITY: 99.4%
+            </div>
+          </div>
+
+          <canvas id="lightCurveCanvas" style="width: 100%; height: 260px; display: block;"></canvas>
+
+          <!-- Range scrubber slider -->
+          <div class="scrubber-bar-wrap">
+            <div class="scrub-labels">
+              <span>T+00:00:00</span>
+              <span id="scrubValText" style="color: var(--mint);">PROGRESS: T+00:00:00</span>
+              <span>WINDOW: 6 HOURS</span>
+            </div>
+            <input type="range" id="simScrubber" min="0" max="2160" value="0" oninput="onScrubChange(this.value)" />
+          </div>
+        </div>
+
+        <!-- Telemetry Return & Detection Status Card -->
+        <div class="side-telemetry-card">
+          <div class="side-card-header">
+            <span class="side-card-lbl">LIVE TELEMETRY FRAME</span>
+            <span class="live-blink-tag" id="simAlertBadge">NOMINAL</span>
+          </div>
+
+          <h3 class="side-event-title" id="simEventName">Nominal Background</h3>
+          <div class="side-prob-val" id="simProbText">P(Flare) = 4.2%</div>
+          <p class="side-subtext" id="simStatusSubtext">Quiet-Sun thermal baseline. No magnetic reconnection triggers detected.</p>
+
+          <div class="mini-metrics-rows">
+            <div class="m-row">
+              <span>ESTIMATED LEAD TIME</span>
+              <b style="color: var(--mint);" id="simLeadReadout">28.4 min</b>
+            </div>
+            <div class="m-row">
+              <span>CLASSIFICATION ESTIMATE</span>
+              <b id="simClassReadout">B1.2</b>
+            </div>
+            <div class="m-row">
+              <span>NEUPERT COUPLING</span>
+              <b style="color: var(--mint);">r = 0.966</b>
+            </div>
+            <div class="m-row">
+              <span>HARDNESS RATIO</span>
+              <b style="color: #ff8a3d;">0.0228</b>
+            </div>
+          </div>
+
+          <button class="btn-flare-zoom" style="width: 100%; margin-top: 10px;" onclick="zoomToActiveSimFlare()">
+            <i class="fa-solid fa-crosshairs mr-1"></i> ZOOM 3D SUN TO ACTIVE FLARE
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────────
+         VIEW 03 — 3D NOWCASTING & FORECAST INTELLIGENCE SUITE
+         ────────────────────────────────────────────────────────── -->
+    <section class="cockpit-view" id="view-nowcast">
+      <div class="view-header-row">
+        <div>
+          <span class="view-eyebrow">PRECURSOR FORECAST &amp; NOWCAST ENGINE // DUAL-BAND FUSION</span>
+          <h2 class="view-title">FLARE NOWCAST &amp; FORECAST INTELLIGENCE</h2>
+        </div>
+        <button class="pill" id="btnTriggerNowcast" onclick="triggerNowcastApi()">
+          <i class="fa-solid fa-radar mr-1"></i> RUN NOWCAST SCAN
+        </button>
+      </div>
+
+      <div class="nowcast-forecast-grid">
+        <!-- Left: Forecast Horizons Card -->
+        <div class="cockpit-glass-card">
+          <div class="cgc-head">
+            <span class="cgc-tag"><i class="fa-solid fa-chart-pie text-cyan-400"></i> STEP 4 &bull; PRECURSOR FORECAST</span>
+            <span class="cgc-stat">MODEL: GBM v2.0</span>
+          </div>
+          <h3 class="cgc-title">Multi-Horizon Flare Probability</h3>
+          <p class="cgc-desc">Causal precursor acceleration ($\nabla F_{SXR}$) extracted from strictly backward-looking time windows with zero lookahead leakage.</p>
+
+          <div class="horizon-bars-stack">
+            <div class="horizon-item">
+              <div class="h-label">
+                <span>5-MIN HORIZON P(&ge;M-Class)</span>
+                <span style="color: var(--mint); font-weight: 700;">89.4%</span>
+              </div>
+              <div class="h-track"><div class="h-fill" style="width: 89.4%; background: var(--mint);"></div></div>
+            </div>
+            <div class="horizon-item">
+              <div class="h-label">
+                <span>15-MIN HORIZON P(&ge;M-Class)</span>
+                <span style="color: var(--a-gas); font-weight: 700;">74.8%</span>
+              </div>
+              <div class="h-track"><div class="h-fill" style="width: 74.8%; background: var(--a-gas);"></div></div>
+            </div>
+            <div class="horizon-item">
+              <div class="h-label">
+                <span>30-MIN HORIZON P(&ge;M-Class)</span>
+                <span style="color: var(--a-rust); font-weight: 700;">58.2%</span>
+              </div>
+              <div class="h-track"><div class="h-fill" style="width: 58.2%; background: var(--a-rust);"></div></div>
+            </div>
+          </div>
+
+          <div class="mini-metrics-rows" style="margin-top: 16px;">
+            <div class="m-row"><span>PREDICTION HORIZON</span><b>15 &ndash; 45 Minutes</b></div>
+            <div class="m-row"><span>PROBABILITY CALIBRATION</span><b>Isotonic Regression</b></div>
+            <div class="m-row"><span>FALSE ALARM RATIO</span><b style="color: var(--mint);">8.4%</b></div>
+          </div>
+        </div>
+
+        <!-- Right: Operational Nowcast Events Card -->
+        <div class="cockpit-glass-card">
+          <div class="cgc-head">
+            <span class="cgc-tag"><i class="fa-solid fa-check-double text-amber-400"></i> STEP 3 &bull; OPERATIONAL NOWCAST</span>
+            <span class="cgc-stat" id="nowcastStatusHeader">DETECTOR: NOMINAL (3.5&sigma; MAD)</span>
+          </div>
+          <h3 class="cgc-title">Active Flare Detection Log</h3>
+          <p class="cgc-desc">Real-time soft X-ray threshold detection cross-verified by coincident non-thermal hard X-ray counts ($r \ge 0.60$).</p>
+
+          <div class="compact-events-list">
+            <div class="event-mini-item">
+              <div class="emi-left">
+                <span class="class-badge class-x">X1.1</span>
+                <div>
+                  <div class="emi-id">EVT-20240511-X11 <small>(AR 13664)</small></div>
+                  <div class="emi-time">14:20:40 &rarr; 14:52:00 UTC &bull; Dur: 83.5m</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div class="emi-status verified"><i class="fa-solid fa-shield-check"></i> NEUPERT CONFIRMED</div>
+                <button class="ctrl-btn-small" style="padding: 3px 8px; font-size: 10px;" onclick="zoomToFlareEvent('X1.1', 'AR 13664')"><i class="fa-solid fa-crosshairs"></i> ZOOM</button>
+              </div>
+            </div>
+
+            <div class="event-mini-item">
+              <div class="emi-left">
+                <span class="class-badge class-m">M2.5</span>
+                <div>
+                  <div class="emi-id">EVT-20240510-M25 <small>(AR 13664)</small></div>
+                  <div class="emi-time">04:36:10 &rarr; 05:04:30 UTC &bull; Dur: 61.8m</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div class="emi-status verified"><i class="fa-solid fa-shield-check"></i> NEUPERT CONFIRMED</div>
+                <button class="ctrl-btn-small" style="padding: 3px 8px; font-size: 10px;" onclick="zoomToFlareEvent('M2.5', 'AR 13664')"><i class="fa-solid fa-crosshairs"></i> ZOOM</button>
+              </div>
+            </div>
+
+            <div class="event-mini-item">
+              <div class="emi-left">
+                <span class="class-badge class-c">C4.8</span>
+                <div>
+                  <div class="emi-id">EVT-20240510-C48 <small>(AR 13664)</small></div>
+                  <div class="emi-time">02:18:20 &rarr; 02:46:40 UTC &bull; Dur: 57.0m</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div class="emi-status verified"><i class="fa-solid fa-shield-check"></i> NEUPERT CONFIRMED</div>
+                <button class="ctrl-btn-small" style="padding: 3px 8px; font-size: 10px;" onclick="zoomToFlareEvent('C4.8', 'AR 13664')"><i class="fa-solid fa-crosshairs"></i> ZOOM</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────────
+         VIEW 04 — CROSS-INSTRUMENT FUSION BENCHMARK & EVALUATION
+         ────────────────────────────────────────────────────────── -->
+    <section class="cockpit-view" id="view-fusion">
+      <div class="view-header-row">
+        <div>
+          <span class="view-eyebrow">SCIENTIFIC EVALUATION &bull; BENCHMARKS &amp; METROLOGY</span>
+          <h2 class="view-title">CROSS-INSTRUMENT INTELLIGENCE &amp; LAB</h2>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button class="ctrl-btn-small is-active" id="btnThresh05" onclick="setConfusionThreshold(0.5)">Threshold 0.5</button>
+          <button class="ctrl-btn-small" id="btnThresh03" onclick="setConfusionThreshold(0.3)">Threshold 0.3</button>
+          <button class="ctrl-btn-small" id="btnThresh07" onclick="setConfusionThreshold(0.7)">Threshold 0.7</button>
+        </div>
+      </div>
+
+      <div class="fusion-eval-grid">
+        <!-- Comparative Scorecard -->
+        <div class="cockpit-glass-card">
+          <div class="cgc-head">
+            <span class="cgc-tag"><i class="fa-solid fa-trophy text-amber-400"></i> FUSION BENCHMARK GAINS</span>
+            <span class="cgc-stat">TEST SET: 1,440 HRS</span>
+          </div>
+
+          <div class="compare-table-compact">
+            <div class="ct-row ct-head">
+              <span>CONFIGURATION</span>
+              <span>TSS</span>
+              <span>HSS</span>
+              <span>FAR</span>
+              <span>LEAD</span>
+            </div>
+            <div class="ct-row">
+              <span class="ct-name">SoLEXS Baseline (Soft X-ray)</span>
+              <span>0.550</span>
+              <span>0.480</span>
+              <span>25.0%</span>
+              <span>11.2m</span>
+            </div>
+            <div class="ct-row">
+              <span class="ct-name">HEL1OS Baseline (Hard X-ray)</span>
+              <span>0.620</span>
+              <span>0.565</span>
+              <span>18.2%</span>
+              <span>14.8m</span>
+            </div>
+            <div class="ct-row ct-highlight">
+              <span class="ct-name"><b>&bull; HelioCast-L1 Dual Fusion</b></span>
+              <span style="color:var(--mint); font-weight:700;">0.812</span>
+              <span style="color:var(--mint); font-weight:700;">0.748</span>
+              <span style="color:var(--mint); font-weight:700;">8.4%</span>
+              <span style="color:var(--mint); font-weight:700;">28.4m</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Confusion Matrix & Lead Time Histogram -->
+        <div class="cockpit-glass-card">
+          <div class="cgc-head">
+            <span class="cgc-tag"><i class="fa-solid fa-table-cells text-cyan-400"></i> CONTINGENCY TABLE &amp; METRICS</span>
+            <span class="cgc-stat">INVARIANT TO CLASS IMBALANCE</span>
+          </div>
+
+          <!-- 2x2 Matrix -->
+          <div class="matrix-grid-2x2">
+            <div class="mat-cell tp">
+              <small>TRUE POSITIVE</small>
+              <span id="matrixTP">142</span>
+              <p>Correct Alerts</p>
+            </div>
+            <div class="mat-cell fp">
+              <small>FALSE POSITIVE</small>
+              <span id="matrixFP">13</span>
+              <p>False Alarms (8.4%)</p>
+            </div>
+            <div class="mat-cell fn">
+              <small>FALSE NEGATIVE</small>
+              <span id="matrixFN">15</span>
+              <p>Missed Flares</p>
+            </div>
+            <div class="mat-cell tn">
+              <small>TRUE NEGATIVE</small>
+              <span id="matrixTN">1,270</span>
+              <p>Quiet Backgrounds</p>
+            </div>
+          </div>
+
+          <div class="matrix-summary-row">
+            <span>Precision: <b id="metricPrec" style="color:var(--mint);">91.6%</b></span>
+            <span>Recall/POD: <b id="metricRecall" style="color:var(--mint);">90.4%</b></span>
+            <span>True Skill (TSS): <b id="metricTSS" style="color:var(--mint);">0.812</b></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────────
+         VIEW 05 — SEARCHABLE EVENT ARCHIVE & FORENSIC DOSSIER
+         ────────────────────────────────────────────────────────── -->
+    <section class="cockpit-view" id="view-archive">
+      <div class="view-header-row">
+        <div>
+          <span class="view-eyebrow">STEP 3 COMPLIANCE &bull; MASTER FLARE DATABASE</span>
+          <h2 class="view-title">EVENT ARCHIVE &amp; FORENSIC DOSSIER</h2>
+        </div>
+        <div class="archive-filter-chips">
+          <button class="chip is-on" data-filter="ALL" onclick="setCatalogFilter('ALL', this)">ALL</button>
+          <button class="chip" data-filter="X" onclick="setCatalogFilter('X', this)">X-CLASS</button>
+          <button class="chip" data-filter="M" onclick="setCatalogFilter('M', this)">M-CLASS</button>
+          <button class="chip" data-filter="C" onclick="setCatalogFilter('C', this)">C-CLASS</button>
+          <button class="chip" data-filter="NEUPERT" onclick="setCatalogFilter('NEUPERT', this)">NEUPERT</button>
+        </div>
+      </div>
+
+      <div class="archive-table-card">
+        <!-- Database Enterprise Metrology Banner -->
+        <div class="db-stats-strip" id="dbStatsStrip">
+          <div class="db-stat-item"><i class="fa-solid fa-database text-cyan-400"></i> ENGINE: <b style="color:#fff;">SQLite 3 (WAL + 64MB Cache)</b></div>
+          <div class="db-stat-item"><i class="fa-solid fa-list-check text-emerald-400"></i> RECORDS: <b id="dbTotalRecords" style="color:var(--mint);">1,494</b></div>
+          <div class="db-stat-item"><i class="fa-solid fa-sun text-amber-400"></i> REGIONS: <b id="dbActiveRegionsCount" style="color:var(--solar-amber);">6 Tracked</b></div>
+          <div class="db-stat-item"><i class="fa-solid fa-hard-drive text-violet-400"></i> SIZE: <b id="dbDiskSize" style="color:#cbd5e1;">284 KB</b></div>
+          <div class="db-stat-item"><i class="fa-solid fa-shield-halved text-emerald-400"></i> STATUS: <b style="color:var(--mint);">INTEGRITY OK</b></div>
+        </div>
+
+        <div class="archive-search-bar">
+          <i class="fa-solid fa-magnifying-glass search-ico"></i>
+          <input type="text" id="catalogSearch" placeholder="Search event ID, flare class, or active region..." oninput="filterCatalog()" />
+          <span class="catalog-counter"><b id="catalogCount" style="color:var(--mint);">6</b> EVENTS CATALOGUED</span>
+        </div>
+
+        <div class="table-scroll-container">
+          <div class="compare-grid" id="catalogTable">
+            <div class="cmp-row cmp-row--head">
+              <span>EVENT ID</span>
+              <span>TIMESTAMPS (START &rarr; PEAK)</span>
+              <span>CLASS</span>
+              <span>PEAK SXR FLUX</span>
+              <span>NEUPERT STATUS</span>
+              <span>INSPECT</span>
+            </div>
+            <!-- Rows injected by script.js -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════════ SCIENTIFIC FORENSIC MODAL ══════════════ -->
+  <div class="modal-backdrop" id="eventModal">
+    <div class="modal-window">
+      <div class="modal-head">
+        <h3 id="modalEventId"><i class="fa-solid fa-satellite text-amber-400"></i> Event Forensic Dossier</h3>
+        <button class="modal-close" onclick="closeEventModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="modalEventBody"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ API & CLOUD SECURITY KEYS MODAL ══════════════ -->
+  <div class="modal-backdrop" id="apiKeyModal" style="display: none;">
+    <div class="modal-window api-keys-modal">
+      <div class="modal-head">
+        <h3><i class="fa-solid fa-key text-amber-400"></i> API &amp; Cloud Security Keys</h3>
+        <button class="modal-close" onclick="closeApiKeyModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="api-modal-lead">Configure verified credentials for real-time Aditya-L1 data streams, AI forensic reasoning, and cloud compute orchestration.</p>
+        
+        <div class="api-keys-grid" id="apiKeysGrid">
+          <!-- Injected dynamically by script.js -->
+        </div>
+
+        <div class="api-modal-footer">
+          <div class="api-status-summary" id="apiModalStatusSummary">
+            <i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Backend connected: <code>http://127.0.0.1:8000</code>
+          </div>
+          <div class="api-modal-actions">
+            <button class="ctrl-btn-small" onclick="loadApiKeys(true)"><i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh</button>
+            <button class="btn-flare-zoom" id="btnSaveApiKeys" onclick="saveApiKeys()"><i class="fa-solid fa-floppy-disk mr-1"></i> Save &amp; Connect Keys</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js?v=backend_connected_v4"></script>
+</body>
+</html>
