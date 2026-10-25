@@ -20,7 +20,8 @@ venv/
 ENV/
 *.egg-info/
 .pytest_cache/
-
+# Raw Data Buffers
+data/raw/
 # Logs
 logs/
 *.log

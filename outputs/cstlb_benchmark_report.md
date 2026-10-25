@@ -1,6 +1,6 @@
 # Cross-Spectral Trust and Lead-Time Benchmark (CSTLB) — Scientific Report
-**Benchmark ID:** `CSTLB-20261025-064532`  
-**Execution Timestamp:** `2026-10-25T06:45:32.042251+00:00`  
+**Benchmark ID:** `CSTLB-20261025-124801`  
+**Execution Timestamp:** `2026-10-25T12:48:01.496769+00:00`  
 **Total Telemetry Analyzed:** `2.0 hours` | **Evaluated Events:** `1`  
 
 ## 1. Core Research Question

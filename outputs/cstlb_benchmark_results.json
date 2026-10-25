@@ -1,6 +1,6 @@
 {
-  "benchmark_id": "CSTLB-20261025-064532",
-  "execution_timestamp": "2026-10-25T06:45:32.042251+00:00",
+  "benchmark_id": "CSTLB-20261025-124801",
+  "execution_timestamp": "2026-10-25T12:48:01.496769+00:00",
   "research_question": "Under which observing conditions does combining SoLEXS soft X-ray and HEL1OS hard X-ray time-series information improve solar-flare detection or forecasting?",
   "total_observing_hours": 2.0,
   "total_events": 1,

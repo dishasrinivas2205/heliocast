@@ -2040,14 +2040,23 @@
       .then(function (data) {
         if (Array.isArray(data) && data.length > 0) {
           CATALOG_EVENTS = data.map(function (item) {
-            var sTime = item.start_time.includes('T') ? item.start_time.split('T')[1].replace('Z','') : item.start_time.split(' ')[1] || item.start_time;
-            var pTime = item.peak_time.includes('T') ? item.peak_time.split('T')[1].replace('Z','') : item.peak_time.split(' ')[1] || item.peak_time;
+            function parseTimestampUtc(t) {
+              if (!t) return '00:00:00 UTC';
+              if (t.includes('T')) return t.split('T')[1].slice(0, 8) + ' UTC';
+              var parts = t.split(' ');
+              for (var i = 0; i < parts.length; i++) {
+                if (parts[i].includes(':')) return parts[i].slice(0, 8) + ' UTC';
+              }
+              return t;
+            }
+            var sTime = parseTimestampUtc(item.start_time);
+            var pTime = parseTimestampUtc(item.peak_time);
             var fluxStr = item.solexs_peak_flux > 1 ? (item.solexs_peak_flux * 1e-7).toExponential(2).replace('e', ' × 10^') : item.solexs_peak_flux.toExponential(2).replace('e', ' × 10^');
             var arClean = (item.active_region || 'AR 13664').replace('AR ', '');
             return {
               id: item.master_id,
-              start: sTime.slice(0, 8) + ' UTC',
-              peak: pTime.slice(0, 8) + ' UTC',
+              start: sTime,
+              peak: pTime,
               class: item.flare_class,
               flux: fluxStr,
               neupert: Boolean(item.neupert_verified),
@@ -2110,6 +2119,9 @@
       '</div>'
     ].join('');
 
+    var modalFoot = $('#modalEventFoot');
+    if (modalFoot) modalFoot.innerHTML = '';
+
     modal.classList.add('is-open');
 
     // Call Agent37 backend reasoning endpoint
@@ -2136,12 +2148,29 @@
 
   function renderEventDossierContent(ev, agentExp) {
     var modalBody = $('#modalEventBody');
+    var modalFoot = $('#modalEventFoot');
     if (!modalBody) return;
 
-    var explanationText = agentExp ? agentExp.explanation_markdown : (
+    var rawExplanation = agentExp ? agentExp.explanation_markdown : (
       'At onset (' + ev.start + '), SoLEXS measured an impulsive soft X-ray thermal ramp rate corroborated by coincident HEL1OS hard X-ray counts. ' +
       'Neupert coupling correlation is measured at r = ' + ev.rVal + ' (Verified). Non-thermal chromospheric electron deposition precedes thermal maximum.'
     );
+
+    function formatDossierMarkdown(md) {
+      if (!md) return '';
+      return md
+        .replace(/^#### (.*?)$/gm, '<h5 style="color:#d8b4fe; margin:14px 0 6px 0; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">$1</h5>')
+        .replace(/^### (.*?)$/gm, '<h4 style="color:#f1f5f9; margin:16px 0 8px 0; font-size:13.5px; font-weight:700;">$1</h4>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#fff;">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08); padding:1px 5px; border-radius:4px; font-family:var(--font-mono); font-size:11px; color:#38bdf8;">$1</code>')
+        .replace(/^> (.*?)$/gm, '<blockquote style="border-left:3px solid #a855f7; padding:8px 12px; margin:8px 0; background:rgba(168,85,247,0.06); border-radius:0 6px 6px 0; color:#cbd5e1; font-style:italic;">$1</blockquote>')
+        .replace(/^- (.*?)$/gm, '<li style="margin-left:16px; margin-bottom:4px; list-style-type:disc;">$1</li>')
+        .replace(/^([0-9]+)\. (.*?)$/gm, '<li style="margin-left:16px; margin-bottom:4px; list-style-type:decimal;">$2</li>')
+        .replace(/\n\n/g, '<div style="height:8px;"></div>');
+    }
+
+    var formattedAnalysis = formatDossierMarkdown(rawExplanation);
 
     modalBody.innerHTML = [
       '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; font-family:var(--font-mono); font-size:11px; margin-bottom:16px;">',
@@ -2152,22 +2181,57 @@
       '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid var(--border-subtle);"><span style="color:var(--ink-muted);">PEAK SXR FLUX:</span> ' + ev.flux + ' W m⁻²</div>',
       '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid var(--border-subtle);"><span style="color:var(--ink-muted);">NEUPERT STATUS:</span> <b style="color:var(--mint);">' + (ev.neupert ? 'VERIFIED (r = ' + ev.rVal + ')' : 'UNCONFIRMED') + '</b></div>',
       '</div>',
-      '<div style="font-size:12.5px; color:var(--ink-muted); line-height:1.6; background:rgba(0, 245, 255, 0.03); padding:14px; border-radius:8px; border:1px solid rgba(0, 245, 255, 0.15);">',
-      '  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">',
-      '    <b style="color:#fff;"><i class="fa-solid fa-brain text-amber-400 mr-1"></i> Agent37 Research Physical Analysis:</b>',
+      '<div style="font-size:12.5px; color:var(--ink-muted); line-height:1.6; background:rgba(0, 245, 255, 0.03); padding:16px; border-radius:8px; border:1px solid rgba(0, 245, 255, 0.15);">',
+      '  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">',
+      '    <b style="color:#fff; font-size:13px;"><i class="fa-solid fa-brain text-amber-400 mr-1"></i> Agent37 Research Physical Analysis:</b>',
       '    <span style="font-size:10px; color:var(--mint); background:rgba(38,208,124,0.12); padding:2px 8px; border-radius:999px;">CONFIDENCE: 98.4%</span>',
       '  </div>',
-      '  <p style="white-space:pre-wrap; margin:0;">' + explanationText + '</p>',
-      '</div>',
-      '<div style="margin-top:16px; display:flex; gap:10px; justify-content:space-between; align-items:center; flex-wrap:wrap;">',
-      '  <div style="display:flex; gap:8px;">',
-      '    <button class="btn-flare-zoom" style="padding:8px 14px; font-size:11px;" onclick="closeEventModal(); zoomToFlareEvent(\'' + ev.class + '\', \'AR ' + (ev.ar || '13664') + '\');"><i class="fa-solid fa-crosshairs mr-1"></i> ZOOM 3D SUN</button>',
-      '    <button class="btn-primary-glow" style="padding:8px 14px; font-size:11px; background:rgba(168,85,247,0.2); border-color:#a855f7; color:#d8b4fe;" onclick="closeEventModal(); openAgent37Modal(\'Perform deep forensic analysis on flare event ' + ev.id + ' (' + ev.class + ') target ' + (ev.ar || 'AR 13664') + '\');"><i class="fa-solid fa-brain mr-1"></i> DEEP AUDIT IN AGENT 37</button>',
-      '  </div>',
-      '  <button class="btn-secondary-ghost" onclick="closeEventModal()">CLOSE DOSSIER</button>',
+      '  <div id="dossierAnalysisContent" style="color:#e2e8f0; line-height:1.6;">' + formattedAnalysis + '</div>',
       '</div>'
     ].join('');
+
+    // Render 4 sticky action buttons in modalFoot
+    if (modalFoot) {
+      modalFoot.innerHTML = [
+        '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">',
+        '  <button class="btn-flare-zoom" style="padding:8px 14px; font-size:11px;" onclick="closeEventModal(); zoomToFlareEvent(\'' + ev.class + '\', \'AR ' + (ev.ar || '13664') + '\');"><i class="fa-solid fa-crosshairs mr-1"></i> ZOOM 3D SUN</button>',
+        '  <button class="btn-primary-glow" style="padding:8px 14px; font-size:11px; background:rgba(168,85,247,0.25); border-color:#a855f7; color:#d8b4fe;" onclick="closeEventModal(); openAgent37Modal(\'Explain flare event ' + ev.id + ' (' + ev.class + ') from ' + (ev.ar || 'AR 13664') + ' in simple words\');"><i class="fa-solid fa-brain mr-1"></i> DEEP AUDIT IN AGENT 37</button>',
+        '  <button class="ctrl-btn-small" style="padding:8px 12px; font-size:11px; background:rgba(0,240,255,0.1); border-color:rgba(0,240,255,0.3); color:#38bdf8;" onclick="exportEventDossierJson(\'' + ev.id + '\')"><i class="fa-solid fa-file-arrow-down mr-1"></i> EXPORT DOSSIER</button>',
+        '  <button class="ctrl-btn-small" style="padding:8px 12px; font-size:11px; background:rgba(38,208,124,0.12); border-color:rgba(38,208,124,0.4); color:var(--mint);" onclick="readDossierAloud()"><i class="fa-solid fa-volume-high mr-1"></i> READ ALOUD</button>',
+        '</div>',
+        '<button class="btn-secondary-ghost" style="padding:8px 14px; font-size:11px;" onclick="closeEventModal()"><i class="fa-solid fa-xmark mr-1"></i> CLOSE</button>'
+      ].join('');
+    }
   }
+
+  window.readDossierAloud = function () {
+    if (!('speechSynthesis' in window)) {
+      alert('Speech synthesis is not supported in this browser.');
+      return;
+    }
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      return;
+    }
+    var el = document.getElementById('dossierAnalysisContent');
+    if (!el) return;
+    var utter = new SpeechSynthesisUtterance(el.innerText || el.textContent);
+    utter.rate = 1.0;
+    utter.pitch = 1.0;
+    window.speechSynthesis.speak(utter);
+  };
+
+  window.exportEventDossierJson = function (id) {
+    var ev = CATALOG_EVENTS.find(function (e) { return e.id === id; });
+    if (!ev) return;
+    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(ev, null, 2));
+    var downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "aditya_l1_dossier_" + id + ".json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
 
   window.closeEventModal = function () {
     var modal = $('#eventModal');
@@ -2747,13 +2811,21 @@
       var botBubble = document.createElement('div');
       botBubble.className = 'agent-msg-bubble agent-msg-bot';
 
-      var formattedMd = typeof marked === 'function' ? marked.parse(res.response_markdown) : res.response_markdown
-        .replace(/### (.*?)\n/g, '<h3 style="color:#d8b4fe; margin:6px 0;">$1</h3>')
-        .replace(/#### (.*?)\n/g, '<h4 style="color:#c084fc; margin:4px 0;">$1</h4>')
-        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08); padding:1px 5px; border-radius:4px; font-family:var(--font-mono); font-size:11.5px;">$1</code>')
-        .replace(/\n\n/g, '<br><br>');
+      function formatAgentMarkdown(md) {
+        if (!md) return '';
+        return md
+          .replace(/### (.*?)\n/g, '<h3 style="color:#d8b4fe; margin:10px 0 6px 0; font-size:14px; font-weight:700;">$1</h3>')
+          .replace(/#### (.*?)\n/g, '<h4 style="color:#c084fc; margin:8px 0 4px 0; font-size:12.5px; font-weight:700;">$1</h4>')
+          .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#fff;">$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08); padding:1px 5px; border-radius:4px; font-family:var(--font-mono); font-size:11.5px; color:#38bdf8;">$1</code>')
+          .replace(/^> (.*?)$/gm, '<blockquote style="border-left:3px solid #a855f7; padding-left:10px; margin:8px 0; color:#cbd5e1; font-style:italic;">$1</blockquote>')
+          .replace(/^- (.*?)$/gm, '<li style="margin-left:16px; margin-bottom:4px; list-style-type:disc;">$1</li>')
+          .replace(/^([0-9]+)\. (.*?)$/gm, '<li style="margin-left:16px; margin-bottom:4px; list-style-type:decimal;">$2</li>')
+          .replace(/\n\n/g, '<br><br>');
+      }
+
+      var formattedMd = formatAgentMarkdown(res.response_markdown);
 
       var citationsHtml = '';
       if (Array.isArray(res.citations) && res.citations.length > 0) {
