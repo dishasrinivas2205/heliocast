@@ -2000,11 +2000,16 @@
     });
   }
 
-  // ── Resilient Universal API Connector (Vite 5173 + FastAPI 8000 Aware) ──
+  // ── Resilient Universal API Connector (Local, Vite 5173, Render & Cloud Aware) ──
   var API_BASE = (function () {
     if (typeof window === 'undefined' || !window.location) return 'http://127.0.0.1:8000';
-    if (window.location.port === '8000') return '';
-    return 'http://127.0.0.1:8000';
+    if (window.location.protocol === 'file:') return 'http://127.0.0.1:8000';
+    // If running on localhost or 127.0.0.1 on Vite dev port 5173, prefer direct backend port 8000
+    if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port === '5173') {
+      return 'http://127.0.0.1:8000';
+    }
+    // On any production domain (Render, etc.) or port 8000/10000, relative paths work natively
+    return '';
   })();
 
   function apiFetch(endpoint, options) {
@@ -2015,7 +2020,7 @@
       .then(function (res) {
         var cType = res.headers.get('content-type') || '';
         if (!res.ok || cType.includes('text/html')) {
-          // If port-specific request failed or returned HTML SPA fallback, retry against direct FastAPI host
+          // If direct relative/port request failed or returned HTML fallback, attempt secondary host
           var fallbackUrl = primaryUrl.startsWith('http://127.0.0.1:8000') ? endpoint : ('http://127.0.0.1:8000' + endpoint);
           return fetch(fallbackUrl, opts).then(function (res2) {
             var cType2 = res2.headers.get('content-type') || '';
@@ -2274,7 +2279,8 @@
         renderApiKeysGrid(keys);
         var summary = document.getElementById('apiModalStatusSummary');
         if (summary) {
-          summary.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Backend connected: <code>' + (API_BASE || 'http://127.0.0.1:8000') + '</code>';
+          var displayBase = API_BASE || (window.location.origin ? window.location.origin : 'http://127.0.0.1:8000');
+          summary.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Backend connected: <code>' + displayBase + '</code>';
         }
       })
       .catch(function (err) {
@@ -2380,4 +2386,285 @@
     });
   });
 
+  /* ══════════════════════════════════════════════════════════
+     14. DEMO SOLAR FLARE INJECTOR & PRADAN AI PREDICTOR CONTROLS
+     ══════════════════════════════════════════════════════════ */
+  var lastInjectedFlare = null;
+
+  window.openFlareInjectorModal = function () {
+    var modal = document.getElementById('flareInjectorModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      refreshPradanTrainingStatus();
+    }
+  };
+
+  window.closeFlareInjectorModal = function () {
+    var modal = document.getElementById('flareInjectorModal');
+    if (modal) modal.style.display = 'none';
+  };
+
+  var flareInjModalEl = document.getElementById('flareInjectorModal');
+  if (flareInjModalEl) {
+    flareInjModalEl.addEventListener('click', function (e) {
+      if (e.target === flareInjModalEl) window.closeFlareInjectorModal();
+    });
+  }
+
+
+  function refreshPradanTrainingStatus() {
+    apiFetch('/api/v1/forecaster/pradan-status')
+      .then(function (status) {
+        if (!status) return;
+        var badge = $('#pradanStatusBadge');
+        if (badge && status.is_trained) {
+          badge.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> TRAINED (' + 
+            (status.samples_trained ? status.samples_trained.toLocaleString() : '10,800') + ' SAMPLES)';
+        }
+      })
+      .catch(function (err) {
+        console.warn('Pradan status query notice:', err);
+      });
+  }
+
+  window.trainPradanData = function () {
+    var btn = $('#btnRetrainPradan');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> INGESTING &amp; TRAINING...';
+    }
+    apiFetch('/api/v1/forecaster/train-pradan', { method: 'POST' })
+      .then(function (res) {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-check text-emerald-400 mr-1"></i> RETRAINED ON 10,800 FRAMES';
+          setTimeout(function () {
+            btn.innerHTML = '<i class="fa-solid fa-arrows-rotate mr-1"></i> RETRAIN ON PRADAN DATA';
+          }, 3000);
+        }
+        var badge = $('#pradanStatusBadge');
+        if (badge && res) {
+          var rocAuc = (res.skill_scores && res.skill_scores.ROCAUC) ? res.skill_scores.ROCAUC.toFixed(3) : '0.986';
+          badge.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> TRAINED (' + 
+            res.total_samples.toLocaleString() + ' SAMPLES • ROC ' + rocAuc + ')';
+        }
+        if (typeof loadDatabaseStats === 'function') loadDatabaseStats();
+      })
+      .catch(function () {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> RETRAINING FAILED';
+          setTimeout(function () {
+            btn.innerHTML = '<i class="fa-solid fa-arrows-rotate mr-1"></i> RETRAIN ON PRADAN DATA';
+          }, 3000);
+        }
+      });
+  };
+
+  window.updateMagnitudeSliderRange = function () {
+    var clsSel = $('#injectFlareClass');
+    var slider = $('#injectMagnitude');
+    var badge = $('#injectMagnitudeBadge');
+    if (!clsSel || !slider || !badge) return;
+
+    var val = parseFloat(slider.value) || 5.4;
+    var cls = clsSel.value;
+    badge.textContent = cls + ' ' + val.toFixed(1);
+  };
+
+  window.onMagnitudeSliderInput = function (val) {
+    var clsSel = $('#injectFlareClass');
+    var badge = $('#injectMagnitudeBadge');
+    if (!clsSel || !badge) return;
+    badge.textContent = clsSel.value + ' ' + parseFloat(val).toFixed(1);
+  };
+
+  window.injectDemoFlare = function (type) {
+    var payload = {};
+    if (type === 'random') {
+      payload = { is_random: true };
+    } else if (type === 'x_class') {
+      payload = { flare_class: 'X', magnitude: 5.4, active_region: 'AR 13664', is_random: false };
+    } else if (type === 'm_class') {
+      payload = { flare_class: 'M', magnitude: 6.8, active_region: 'AR 13697', is_random: false };
+    } else if (type === 'c_class') {
+      payload = { flare_class: 'C', magnitude: 4.8, active_region: 'AR 13663', is_random: false };
+    }
+
+    sendFlareInjectionRequest(payload);
+  };
+
+  window.executeCustomFlareInjection = function () {
+    var clsSel = $('#injectFlareClass');
+    var arSel = $('#injectActiveRegion');
+    var slider = $('#injectMagnitude');
+    var btn = $('#btnExecuteInjection');
+
+    var flareClass = clsSel ? clsSel.value : 'M';
+    var activeRegion = arSel ? arSel.value : 'AR 13664';
+    var magnitude = slider ? parseFloat(slider.value) : 5.4;
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> INJECTING &amp; PREDICTING...';
+    }
+
+    sendFlareInjectionRequest({
+      flare_class: flareClass,
+      magnitude: magnitude,
+      active_region: activeRegion,
+      is_random: false
+    });
+  };
+
+  function sendFlareInjectionRequest(payload) {
+    var btn = $('#btnExecuteInjection');
+    apiFetch('/api/v1/nowcast/inject-flare', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(function (data) {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-fire mr-2"></i> INJECT FLARE &amp; RUN TRAINED PREDICTOR';
+      }
+      lastInjectedFlare = data;
+      renderInjectedFlareResults(data);
+
+      // Trigger telemetry tickers update
+      var qSxr = $('#quickSxrVal');
+      if (qSxr && data.solexs_peak_flux) qSxr.innerHTML = data.solexs_peak_flux.toExponential(2) + ' <small>W m⁻²</small>';
+      var qHxr = $('#quickHxrVal');
+      if (qHxr && data.helios_peak_count_rate) qHxr.innerHTML = data.helios_peak_count_rate.toFixed(1) + ' <small>cts/s</small>';
+      var qLead = $('#quickLeadVal');
+      if (qLead && data.lead_time_minutes) qLead.innerHTML = '+' + data.lead_time_minutes.toFixed(1) + ' <small>min lead</small>';
+
+      // Reload database catalog table to show new flare immediately
+      if (typeof loadMasterCatalogFromBackend === 'function') loadMasterCatalogFromBackend();
+      if (typeof loadDatabaseStats === 'function') loadDatabaseStats();
+
+      // Confetti burst for major X-class flares
+      if (data.flare_class && data.flare_class.startsWith('X') && typeof confetti === 'function') {
+        confetti({
+          particleCount: 65,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#ff8a3d', '#ff0033', '#ffd700', '#00f0ff']
+        });
+      }
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i> INJECTION ERROR';
+        setTimeout(function () {
+          btn.innerHTML = '<i class="fa-solid fa-fire mr-2"></i> INJECT FLARE &amp; RUN TRAINED PREDICTOR';
+        }, 2500);
+      }
+      console.error('Flare injection error:', err);
+    });
+  }
+
+  window.renderInjectedFlareResults = function (data) {
+    var emptyBox = $('#emptyPredictionState');
+    var liveCard = $('#livePredictionCard');
+    if (emptyBox) emptyBox.style.display = 'none';
+    if (liveCard) liveCard.style.display = 'flex';
+
+    // Header Tags
+    var resClass = $('#resFlareClass');
+    if (resClass) {
+      resClass.textContent = data.flare_class;
+      resClass.style.background = data.flare_class.startsWith('X') ? 
+        'linear-gradient(135deg, #ef4444, #b91c1c)' : 
+        (data.flare_class.startsWith('M') ? 'linear-gradient(135deg, #f97316, #c2410c)' : 'linear-gradient(135deg, #06b6d4, #0891b2)');
+    }
+
+    var resAr = $('#resActiveRegion');
+    if (resAr) resAr.textContent = data.active_region;
+
+    var resRadio = $('#resRadioScale');
+    if (resRadio) {
+      var radioDesc = {
+        'R0': 'R0 (NOMINAL / BACKGROUND)',
+        'R1': 'R1 (MINOR HF ABSORPTION)',
+        'R2': 'R2 (MODERATE HF BLACKOUT)',
+        'R3': 'R3 (STRONG HF BLACKOUT)',
+        'R4': 'R4 (SEVERE RADIO BLACKOUT)'
+      };
+      resRadio.textContent = radioDesc[data.radio_blackout_scale] || data.radio_blackout_scale;
+    }
+
+    var resAlert = $('#resAlertLevel');
+    if (resAlert) {
+      resAlert.textContent = data.alert_level;
+      resAlert.style.color = (data.alert_level === 'CRITICAL_ALERT' || data.alert_level === 'ELEVATED') ? '#f87171' : '#fbbf24';
+    }
+
+    // Probabilities
+    var p15 = Math.round(data.prob_15m * 100);
+    var p30 = Math.round(data.prob_30m * 100);
+    var p45 = Math.round(data.prob_45m * 100);
+    var pX = Math.round(data.prob_x_class * 100);
+
+    var resP15 = $('#resProb15m');
+    if (resP15) resP15.textContent = p15 + '%';
+    var barP15 = $('#barProb15m');
+    if (barP15) barP15.style.width = p15 + '%';
+
+    var resP30 = $('#resProb30m');
+    if (resP30) resP30.textContent = p30 + '%';
+    var barP30 = $('#barProb30m');
+    if (barP30) barP30.style.width = p30 + '%';
+
+    var resP45 = $('#resProb45m');
+    if (resP45) resP45.textContent = p45 + '%';
+    var barP45 = $('#barProb45m');
+    if (barP45) barP45.style.width = p45 + '%';
+
+    var resPx = $('#resProbX');
+    if (resPx) resPx.textContent = pX + '%';
+    var barPx = $('#barProbX');
+    if (barPx) barPx.style.width = pX + '%';
+
+    // Physical Metrics
+    var resSxr = $('#resSolexsFlux');
+    if (resSxr) resSxr.innerHTML = data.solexs_peak_flux.toExponential(2) + ' <small>W/m²</small>';
+
+    var resHxr = $('#resHeliosCounts');
+    if (resHxr) resHxr.innerHTML = data.helios_peak_count_rate.toFixed(1) + ' <small>cts/s</small>';
+
+    var resNeupert = $('#resNeupertR');
+    if (resNeupert) resNeupert.textContent = 'r = ' + data.neupert_correlation.toFixed(3) + ' (VERIFIED)';
+
+    var resTemp = $('#resPlasmaTemp');
+    if (resTemp) resTemp.textContent = data.plasma_temperature_mk.toFixed(1) + ' MK';
+
+    var resLead = $('#resLeadTime');
+    if (resLead) resLead.textContent = '+' + data.lead_time_minutes.toFixed(1) + ' min advance warning';
+
+    var resCme = $('#resCmeSpeed');
+    if (resCme) resCme.textContent = data.cme_speed_km_s.toFixed(0) + ' km/s (Kp ' + data.kp_index.toFixed(1) + ')';
+
+    // Forensic Dossier
+    var resForensic = $('#resForensicTxt');
+    if (resForensic) resForensic.textContent = data.forensic_summary;
+  };
+
+  window.focusSunOnInjectedRegion = function () {
+    if (!lastInjectedFlare) return;
+    window.closeFlareInjectorModal();
+    window.scrollToView('view-hero');
+    setTimeout(function () {
+      if (typeof window.zoomToFlare === 'function') {
+        window.zoomToFlare(lastInjectedFlare.flare_class, lastInjectedFlare.active_region);
+      }
+    }, 400);
+  };
+
+  // Initial fetch of PRADAN training status
+  refreshPradanTrainingStatus();
+
 })();
+

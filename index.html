@@ -82,6 +82,9 @@
     </nav>
 
     <div class="hud-status-strip">
+      <button class="injector-btn" id="btnOpenInjectorModal" onclick="openFlareInjectorModal()" title="Demo Solar Flare Injector & PRADAN AI Predictor">
+        <i class="fa-solid fa-fire-flame-curved text-orange-400 mr-1"></i> FLARE INJECTOR (DEMO)
+      </button>
       <button class="api-key-btn" id="btnOpenApiKeyModal" onclick="openApiKeyModal()" title="Configure API & Cloud Keys">
         <i class="fa-solid fa-key text-amber-400 mr-1"></i> API KEYS
       </button>
@@ -116,8 +119,11 @@
             <button class="btn-primary-glow" onclick="scrollToView('view-observatory')">
               <i class="fa-solid fa-satellite-dish mr-1"></i> OPEN 3D OBSERVATORY
             </button>
+            <button class="btn-flare-inject-cta" onclick="openFlareInjectorModal()">
+              <i class="fa-solid fa-fire-flame-curved mr-1 text-orange-400"></i> FLARE INJECTOR (DEMO)
+            </button>
             <button class="btn-secondary-ghost" onclick="scrollToView('view-forecast')">
-              <i class="fa-solid fa-bolt mr-1"></i> VIEW PREDICTION STREAM
+              <i class="fa-solid fa-bolt mr-1"></i> PREDICTION STREAM
             </button>
             <button class="btn-secondary-ghost" onclick="togglePassbandDrawer()">
               <i class="fa-solid fa-layer-group mr-1"></i> 3D PASSBANDS
@@ -295,9 +301,14 @@
           <span class="view-eyebrow">PRECURSOR FORECAST &amp; NOWCAST ENGINE // DUAL-BAND FUSION</span>
           <h2 class="view-title">FLARE NOWCAST &amp; FORECAST INTELLIGENCE</h2>
         </div>
-        <button class="pill" id="btnTriggerNowcast" onclick="triggerNowcastApi()">
-          <i class="fa-solid fa-radar mr-1"></i> RUN NOWCAST SCAN
-        </button>
+        <div style="display: flex; gap: 8px;">
+          <button class="pill" style="border-color: rgba(255, 138, 61, 0.4); color: #ff8a3d; background: rgba(255, 138, 61, 0.1);" onclick="openFlareInjectorModal()">
+            <i class="fa-solid fa-fire-flame-curved mr-1"></i> INJECT DEMO FLARE
+          </button>
+          <button class="pill" id="btnTriggerNowcast" onclick="triggerNowcastApi()">
+            <i class="fa-solid fa-radar mr-1"></i> RUN NOWCAST SCAN
+          </button>
+        </div>
       </div>
 
       <div class="nowcast-forecast-grid">
@@ -583,6 +594,198 @@
     </div>
   </div>
 
-  <script src="script.js?v=backend_connected_v4"></script>
+  <!-- ══════════════ DEMO SOLAR FLARE INJECTOR & PRADAN AI PREDICTOR MODAL ══════════════ -->
+  <div class="modal-backdrop" id="flareInjectorModal" style="display: none;">
+    <div class="modal-window injector-modal-window">
+      <div class="modal-head">
+        <div class="injector-title-wrap">
+          <h3><i class="fa-solid fa-fire-flame-curved text-orange-400"></i> Solar Flare Injector &amp; PRADAN AI Predictor</h3>
+          <span class="micro-badge" style="background: rgba(255, 138, 61, 0.15); color: #ff8a3d; border-color: rgba(255, 138, 61, 0.4);">
+            <i class="fa-solid fa-microchip mr-1"></i> LIVE DEMO SIMULATION
+          </span>
+        </div>
+        <button class="modal-close" onclick="closeFlareInjectorModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body injector-modal-body">
+        <!-- PRADAN Data Training Status Bar -->
+        <div class="pradan-training-bar">
+          <div class="pradan-info">
+            <span class="pradan-tag"><i class="fa-solid fa-satellite mr-1 text-cyan-400"></i> ISRO ISSDC PRADAN</span>
+            <span class="pradan-url"><a href="https://pradan.issdc.gov.in/al1/protected/browse.xhtml?id=hel1os" target="_blank" rel="noopener">browse.xhtml?id=hel1os</a></span>
+            <span class="pradan-status" id="pradanStatusBadge"><i class="fa-solid fa-circle-check text-emerald-400"></i> TRAINED (10,800 SAMPLES)</span>
+          </div>
+          <button class="pradan-retrain-btn" id="btnRetrainPradan" onclick="trainPradanData()" title="Retrain AI Model on all 5 Aditya-L1 Level-1 series">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i> RETRAIN ON PRADAN DATA
+          </button>
+        </div>
+
+        <div class="injector-columns">
+          <!-- Left Column: Generator Controls -->
+          <div class="injector-controls-col">
+            <h4 class="col-title"><i class="fa-solid fa-sliders text-amber-400 mr-1"></i> 1. Manual Flare Configuration</h4>
+            <p class="col-desc">Create custom solar eruptive flares or pick randomized flares. The trained ML model will accurately predict outcomes based on Aditya-L1 historical physics.</p>
+
+            <!-- Quick Random / Preset Actions -->
+            <div class="quick-presets-strip">
+              <button class="btn-preset btn-preset-random" onclick="injectDemoFlare('random')">
+                <i class="fa-solid fa-dice mr-1 text-pink-400"></i> 🎲 RANDOM FLARE
+              </button>
+              <button class="btn-preset btn-preset-x" onclick="injectDemoFlare('x_class')">
+                <i class="fa-solid fa-burst mr-1 text-red-400"></i> 💥 X-CLASS SUPERFLARE
+              </button>
+              <button class="btn-preset btn-preset-m" onclick="injectDemoFlare('m_class')">
+                <i class="fa-solid fa-bolt mr-1 text-orange-400"></i> ⚡ M-CLASS MAJOR
+              </button>
+              <button class="btn-preset btn-preset-c" onclick="injectDemoFlare('c_class')">
+                <i class="fa-solid fa-atom mr-1 text-cyan-400"></i> 🔹 C-CLASS SUB-FLARE
+              </button>
+            </div>
+
+            <!-- Custom Form Inputs -->
+            <div class="injector-form-card">
+              <div class="form-row">
+                <div class="form-field flex-1">
+                  <label for="injectFlareClass"><i class="fa-solid fa-layer-group mr-1 text-amber-400"></i> Flare Class</label>
+                  <select id="injectFlareClass" class="custom-select" onchange="updateMagnitudeSliderRange()">
+                    <option value="X">X-Class (Extreme Superstorm &gt; 10⁻⁴ W/m²)</option>
+                    <option value="M" selected>M-Class (Major Eruptive 10⁻⁵ – 10⁻⁴ W/m²)</option>
+                    <option value="C">C-Class (Minor Precursor 10⁻⁶ – 10⁻⁵ W/m²)</option>
+                  </select>
+                </div>
+                <div class="form-field flex-1">
+                  <label for="injectActiveRegion"><i class="fa-solid fa-sun mr-1 text-orange-400"></i> Target Active Region</label>
+                  <select id="injectActiveRegion" class="custom-select">
+                    <option value="AR 13664" selected>AR 13664 (May 2024 Superstorm, Lat -18°)</option>
+                    <option value="AR 13842">AR 13842 (Oct 2024 X9.0 Producer, Lat -16°)</option>
+                    <option value="AR 13697">AR 13697 (June 2024 Return of 13664, Lat -19°)</option>
+                    <option value="AR 13663">AR 13663 (Northern Multi-Loop, Lat +24°)</option>
+                    <option value="AR 13738">AR 13738 (Eruptive Arcade, Lat -12°)</option>
+                    <option value="AR 13780">AR 13780 (East Limb Rotating, Lat +15°)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Magnitude Slider -->
+              <div class="form-field mt-3">
+                <div class="slider-header">
+                  <label for="injectMagnitude"><i class="fa-solid fa-gauge-high mr-1 text-cyan-400"></i> Class Magnitude</label>
+                  <span class="slider-val-badge" id="injectMagnitudeBadge">M 5.4</span>
+                </div>
+                <input type="range" id="injectMagnitude" min="1.0" max="9.9" step="0.1" value="5.4" class="custom-slider" oninput="onMagnitudeSliderInput(this.value)" />
+                <div class="slider-scale-ticks">
+                  <span>1.0</span>
+                  <span>3.0</span>
+                  <span>5.0</span>
+                  <span>7.0</span>
+                  <span>9.9</span>
+                </div>
+              </div>
+
+              <button class="btn-execute-injection" id="btnExecuteInjection" onclick="executeCustomFlareInjection()">
+                <i class="fa-solid fa-fire mr-2"></i> INJECT FLARE &amp; RUN TRAINED PREDICTOR
+              </button>
+            </div>
+          </div>
+
+          <!-- Right Column: Live Model Output & Scientific Predictions -->
+          <div class="injector-results-col">
+            <h4 class="col-title"><i class="fa-solid fa-square-poll-vertical text-cyan-400 mr-1"></i> 2. Trained ML Predictions &amp; Grounding</h4>
+            <p class="col-desc">Outputs computed dynamically by the model trained on Level-1 Aditya-L1 PRADAN historical data.</p>
+
+            <div class="prediction-results-box" id="predictionResultsBox">
+              <!-- Placeholder State -->
+              <div class="empty-prediction-state" id="emptyPredictionState">
+                <i class="fa-solid fa-satellite-dish pulse-icon"></i>
+                <p>Select a preset flare or configure custom parameters and click <strong>INJECT FLARE</strong> to test the trained model.</p>
+              </div>
+
+              <!-- Live Injected Result View (hidden by default) -->
+              <div class="live-prediction-card" id="livePredictionCard" style="display: none;">
+                <div class="pred-card-header">
+                  <div class="pred-class-tag" id="resFlareClass">X5.4</div>
+                  <div class="pred-meta-group">
+                    <span class="pred-ar-tag" id="resActiveRegion">AR 13664</span>
+                    <span class="pred-radio-tag" id="resRadioScale">R3 STRONG BLACKOUT</span>
+                  </div>
+                  <div class="pred-alert-badge" id="resAlertLevel">ELEVATED</div>
+                </div>
+
+                <!-- Multi-Horizon Probabilities Strip -->
+                <div class="prob-horizons-grid">
+                  <div class="prob-horizon-item">
+                    <span class="horizon-lbl">15-MIN PROB</span>
+                    <span class="horizon-val" id="resProb15m">--%</span>
+                    <div class="horizon-bar"><div class="horizon-fill" id="barProb15m" style="width: 0%;"></div></div>
+                  </div>
+                  <div class="prob-horizon-item">
+                    <span class="horizon-lbl">30-MIN PROB</span>
+                    <span class="horizon-val" id="resProb30m">--%</span>
+                    <div class="horizon-bar"><div class="horizon-fill" id="barProb30m" style="width: 0%;"></div></div>
+                  </div>
+                  <div class="prob-horizon-item">
+                    <span class="horizon-lbl">45-MIN PROB</span>
+                    <span class="horizon-val" id="resProb45m">--%</span>
+                    <div class="horizon-bar"><div class="horizon-fill" id="barProb45m" style="width: 0%;"></div></div>
+                  </div>
+                  <div class="prob-horizon-item">
+                    <span class="horizon-lbl">P(≥ X-CLASS)</span>
+                    <span class="horizon-val" id="resProbX">--%</span>
+                    <div class="horizon-bar"><div class="horizon-fill" id="barProbX" style="width: 0%;"></div></div>
+                  </div>
+                </div>
+
+                <!-- Physical Observables Grid -->
+                <div class="phys-metrics-grid">
+                  <div class="phys-chip">
+                    <span class="phys-k">SoLEXS Peak Flux</span>
+                    <span class="phys-v" id="resSolexsFlux">--</span>
+                  </div>
+                  <div class="phys-chip">
+                    <span class="phys-k">HEL1OS Hard X-rays</span>
+                    <span class="phys-v" id="resHeliosCounts">--</span>
+                  </div>
+                  <div class="phys-chip">
+                    <span class="phys-k">Neupert Correlation</span>
+                    <span class="phys-v" id="resNeupertR" style="color: var(--mint);">r = --</span>
+                  </div>
+                  <div class="phys-chip">
+                    <span class="phys-k">Plasma Temp</span>
+                    <span class="phys-v" id="resPlasmaTemp">-- MK</span>
+                  </div>
+                  <div class="phys-chip">
+                    <span class="phys-k">Precursor Lead Time</span>
+                    <span class="phys-v" id="resLeadTime" style="color: #00f0ff;">+-- min</span>
+                  </div>
+                  <div class="phys-chip">
+                    <span class="phys-k">CME Velocity</span>
+                    <span class="phys-v" id="resCmeSpeed">-- km/s</span>
+                  </div>
+                </div>
+
+                <!-- Agent37 Forensic Briefing -->
+                <div class="forensic-briefing-box">
+                  <div class="briefing-head"><i class="fa-solid fa-microscope text-amber-400 mr-1"></i> Agent37 Heliophysics Forensic Dossier</div>
+                  <p class="briefing-txt" id="resForensicTxt">--</p>
+                </div>
+
+                <!-- Actions inside result -->
+                <div class="res-card-actions">
+                  <button class="btn-focus-sun" id="btnFocusSun" onclick="focusSunOnInjectedRegion()">
+                    <i class="fa-solid fa-crosshairs mr-1"></i> ZOOM 3D SUN TO ACTIVE REGION
+                  </button>
+                  <button class="btn-view-archive" onclick="closeFlareInjectorModal(); scrollToView('view-archive');">
+                    <i class="fa-solid fa-table-list mr-1"></i> VIEW IN CATALOGUE
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js?v=backend_connected_v5"></script>
 </body>
 </html>

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"magenta.bold,cyan.bold\" \"npm run server\" \"npm run client\"",
     "dev": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"magenta.bold,cyan.bold\" \"npm run server\" \"npm run client\"",
-    "server": "python3 server.py",
+    "server": "python3 backend/server.py",
     "client": "vite --host 127.0.0.1 --port 5173",
     "build": "vite build",
     "preview": "vite preview"

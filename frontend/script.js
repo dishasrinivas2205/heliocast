@@ -2000,11 +2000,16 @@
     });
   }
 
-  // ── Resilient Universal API Connector (Vite 5173 + FastAPI 8000 Aware) ──
+  // ── Resilient Universal API Connector (Local, Vite 5173, Render & Cloud Aware) ──
   var API_BASE = (function () {
     if (typeof window === 'undefined' || !window.location) return 'http://127.0.0.1:8000';
-    if (window.location.port === '8000') return '';
-    return 'http://127.0.0.1:8000';
+    if (window.location.protocol === 'file:') return 'http://127.0.0.1:8000';
+    // If running on localhost or 127.0.0.1 on Vite dev port 5173, prefer direct backend port 8000
+    if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port === '5173') {
+      return 'http://127.0.0.1:8000';
+    }
+    // On any production domain (Render, etc.) or port 8000/10000, relative paths work natively
+    return '';
   })();
 
   function apiFetch(endpoint, options) {
@@ -2015,7 +2020,7 @@
       .then(function (res) {
         var cType = res.headers.get('content-type') || '';
         if (!res.ok || cType.includes('text/html')) {
-          // If port-specific request failed or returned HTML SPA fallback, retry against direct FastAPI host
+          // If direct relative/port request failed or returned HTML fallback, attempt secondary host
           var fallbackUrl = primaryUrl.startsWith('http://127.0.0.1:8000') ? endpoint : ('http://127.0.0.1:8000' + endpoint);
           return fetch(fallbackUrl, opts).then(function (res2) {
             var cType2 = res2.headers.get('content-type') || '';
@@ -2274,7 +2279,8 @@
         renderApiKeysGrid(keys);
         var summary = document.getElementById('apiModalStatusSummary');
         if (summary) {
-          summary.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Backend connected: <code>' + (API_BASE || 'http://127.0.0.1:8000') + '</code>';
+          var displayBase = API_BASE || (window.location.origin ? window.location.origin : 'http://127.0.0.1:8000');
+          summary.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Backend connected: <code>' + displayBase + '</code>';
         }
       })
       .catch(function (err) {
