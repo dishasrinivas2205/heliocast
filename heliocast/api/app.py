@@ -3,6 +3,7 @@ FastAPI Application Entrypoint for HelioCast-L1.
 Configures CORS, lifespan logging, OpenAPI metadata, and routes.
 """
 
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,19 +35,26 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentials=True,
+        allow_credentials=False,   # Must be False when allow_origins=["*"]
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
     app.include_router(router)
 
-    # Static frontend mounting (Aether Deep Field Solar Observatory)
-    import os
+    # Static frontend mounting — serve the cockpit UI
     from fastapi.staticfiles import StaticFiles
-    frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
-    if os.path.exists(frontend_dir):
+    # Try frontend/ first (production build output), fall back to root
+    frontend_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
+    )
+    if os.path.exists(frontend_dir) and os.path.exists(os.path.join(frontend_dir, "index.html")):
         app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+    else:
+        # Fallback: serve from project root
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        if os.path.exists(os.path.join(root_dir, "index.html")):
+            app.mount("/", StaticFiles(directory=root_dir, html=True), name="frontend")
 
     return app
 

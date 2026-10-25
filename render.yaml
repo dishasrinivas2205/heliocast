@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: heliocast-l1
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: python server.py
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: HELIOCAST_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: "10000"
+      - key: API_RELOAD
+        value: "false"
+      - key: TELEMETRY_CADENCE_SEC
+        value: "10"
+      - key: QUIET_SUN_BASELINE_WINDOW_SEC
+        value: "900"
+      - key: FORECAST_HORIZONS_MIN
+        value: "15,30,45"
+      - key: ALERT_PROBABILITY_THRESHOLD
+        value: "0.60"
+      - key: MIN_HISTORY_STEPS
+        value: "60"
+      - key: DATABASE_PATH
+        value: data/catalog/aditya_flares.db
+      - key: RAW_DATA_DIR
+        value: data/raw
+      - key: SAMPLE_DATA_DIR
+        value: data/sample
+      - key: WEBHOOK_ALERT_ENABLED
+        value: "false"
+      - key: WEBHOOK_ALERT_URL
+        value: https://orbital-ops.isro.gov.in/alerts
+      # Set these secret API keys via Render dashboard -> Environment
+      - key: AGENT37_API_KEY
+        sync: false
+      - key: NODUS_COMPUTE_API_KEY
+        sync: false
+      - key: NODUS_COMPUTE_ENDPOINT
+        value: https://compute.nodus.ai/v1
+      - key: ISSDC_PRADAN_API_KEY
+        sync: false
+      - key: NASA_CDAWEB_API_KEY
+        sync: false
+      - key: HELIOCAST_API_KEY
+        sync: false
